@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Халявщик | Главная (ТВ-версия)</title>
+
+    <!-- ЗАЩИТА ОТ КЭШИРОВАНИЯ ОШИБОК -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
@@ -35,7 +41,7 @@
 
         .go-player-btn { 
             display: block; 
-            background: #e50914; 
+            background: #007bff; 
             color: white; 
             text-decoration: none; 
             padding: 16px; 
@@ -43,7 +49,7 @@
             font-weight: bold; 
             font-size: 18px; 
             margin-top: 10px;
-            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
             box-sizing: border-box;
         }
 
@@ -105,7 +111,7 @@
        
         <!-- Главные разделы -->
         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
-            <a href="player.html" class="go-player-btn focusable" tabindex="0" style="background: #007bff;" onclick="playSound()">📺 IPTV-плеер</a>          
+            <a href="player.html" class="go-player-btn focusable" tabindex="0" onclick="playSound()">📺 IPTV-плеер</a>          
         </div>
     </div>
 
@@ -131,7 +137,6 @@
         // СКРИПТ УПРАВЛЕНИЯ ПУЛЬТОМ (СТРЕЛКИ + ОК)
         document.addEventListener('keydown', function(e) {
             var focusables = Array.from(document.querySelectorAll('.focusable'));
-            // Фильтруем только видимые элементы (чтобы не прыгало на скрытые кнопки поиска)
             focusables = focusables.filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
             
             var current = document.activeElement;
@@ -148,7 +153,6 @@
                 focusables[prevIndex].focus();
             }
             else if (e.key === 'Enter' || e.keyCode === 13) {
-                // Если с пульта нажали ОК на карточке или кнопке — кликаем по ней
                 if (index !== -1 && current.tagName !== 'INPUT') {
                     e.preventDefault();
                     current.click();
@@ -160,6 +164,19 @@
         window.addEventListener('DOMContentLoaded', () => {
             const first = document.querySelector('.focusable');
             if(first) first.focus();
+        });
+
+        // УМНЫЙ КОНТРОЛЬ СЕТИ ОТ ЗАЛИПАНИЯ В "OOPS"
+        window.addEventListener('load', function() {
+            if (navigator.onLine) {
+                if (!sessionStorage.getItem('forced_refresh')) {
+                    sessionStorage.setItem('forced_refresh', 'true');
+                    window.location.reload(true);
+                }
+            }
+        });
+        window.addEventListener('online', function() {
+            window.location.reload(true);
         });
     </script>
 </body>
