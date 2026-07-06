@@ -132,7 +132,7 @@
                 });
         }
 
-        function startStream(streamUrl, channelName) {
+       function startStream(streamUrl, channelName) {
             playSound();
             var status = document.getElementById('status');
             status.innerHTML = '🚀 Открываем в MX Player: ' + channelName + '...';
@@ -146,8 +146,17 @@
                             "package=com.mxtech.videoplayer.ad;" + 
                             "end";
             
-            // Перенаправляем систему на этот интент
-            window.location.href = intentUrl;
+            // Создаем скрытую ссылку-интент на странице
+            var hiddenLink = document.createElement('a');
+            hiddenLink.href = intentUrl;
+            hiddenLink.style.display = 'none';
+            
+            // Добавляем её в документ, принудительно кликаем для обхода защитных механизмов WebView и удаляем
+            document.body.appendChild(hiddenLink);
+            hiddenLink.click();
+            document.body.removeChild(hiddenLink);
+        }
+            
         }
 
         // НАВИГАЦИЯ ДЛЯ ПУЛЬТА УПРАВЛЕНИЯ D-PAD
