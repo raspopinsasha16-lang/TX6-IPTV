@@ -145,6 +145,9 @@
     </div>
 
     <script>
+        // Глобальная переменная для хранения выбранного файла, чтобы плеер мог его прочесть напрямую
+        var currentLocalFileObject = null;
+
         function playSound() { 
             var audio = document.getElementById('clickSound');
             if(audio) {
@@ -181,14 +184,14 @@
             }
         }
 
-        // Обработка выбранного из памяти файла
         function handleLocalFile(input) {
             if (input.files && input.files[0]) {
                 var file = input.files[0];
-                // Создаем временную внутреннюю ссылку на этот файл в памяти устройства
+                currentLocalFileObject = file; // Сохраняем в память сессии
+                
+                // Создаем временный Blob URL
                 var objectUrl = URL.createObjectURL(file);
                 
-                // Сохраняем имя и временный путь в localStorage, чтобы вывести кнопку на экран
                 localStorage.setItem('local_video_name', file.name);
                 localStorage.setItem('local_video_blob', objectUrl);
                 
@@ -224,7 +227,8 @@
             fetch(menuProxy + playlistUrl)
                 .then(response => {
                     if (!response.ok) throw new Error('Ошибка сети');
-                    return response.text())
+                    return response.text();
+                }) // ТУТ БЫЛА ИСПРАВЛЕНА СКОБКА
                 .then(data => { parseAndBuildList(data, playlistUrl); })
                 .catch(() => {
                     fetch(playlistUrl)
@@ -242,7 +246,6 @@
             var grid = document.getElementById('channelsGrid');
             status.innerHTML = '📺 Список обновлен. Выберите канал:';
             
-            // Выводим кастомные элементы наверх
             appendCustomButtons(grid);
 
             var lines = data.split('\n');
@@ -280,7 +283,6 @@
         }
 
         function appendCustomButtons(grid) {
-            // 1. Сетевой MP4
             var savedVideo = localStorage.getItem('custom_video_url');
             if (savedVideo) {
                 var vipBtn = document.createElement('button');
@@ -293,7 +295,6 @@
                 grid.appendChild(vipBtn);
             }
 
-            // 2. Локальный файл из памяти приставки
             var localName = localStorage.getItem('local_video_name');
             var localBlob = localStorage.getItem('local_video_blob');
             if (localBlob) {
@@ -303,7 +304,11 @@
                 localBtn.style.background = '#e50914';
                 localBtn.style.color = '#fff';
                 localBtn.innerText = '📁 Из памяти: ' + (localName.length > 20 ? localName.substring(0,18)+'...' : localName);
-                localBtn.onclick = function() { startStream(localBlob, localName); };
+                localBtn.onclick = function() { 
+                    // Если файл выбран в этой сессии — пускаем объект, если нет — пробуем blob URL
+                    var finalUrl = currentLocalFileObject ? URL.createObjectURL(currentLocalFileObject) : localBlob;
+                    startStream(finalUrl, localName, true); 
+                };
                 grid.appendChild(localBtn);
             }
         }
@@ -315,17 +320,30 @@
             document.getElementById('startTvBtn').focus();
         }
 
-        function startStream(streamUrl, channelName) {
+        function startStream(streamUrl, channelName, isLocalFile = false) {
             playSound();
             var status = document.getElementById('status');
             status.innerHTML = '🎬 Выбираем плеер для: ' + channelName + '...';
             
-            var intentUrl = "intent://" + streamUrl.replace(/^https?:\/\//, "").replace(/^blob:https?:\/\//, "") + 
+            var intentUrl = "";
+            
+            if (isLocalFile) {
+                // Особая конфигурация Intent для локальных файлов через медиа-контент
+                var cleanPath = streamUrl.replace(/^blob:/, "");
+                intentUrl = "intent:" + cleanPath + 
                             "#Intent;" +
-                            "scheme=" + (streamUrl.startsWith("blob") ? "content" : (streamUrl.startsWith("https") ? "https" : "http")) + ";" +
                             "action=android.intent.action.VIEW;" +
                             "type=video/*;" + 
                             "end";
+            } else {
+                // Стандартный запуск онлайн потоков
+                intentUrl = "intent://" + streamUrl.replace(/^https?:\/\//, "") + 
+                            "#Intent;" +
+                            "scheme=" + (streamUrl.startsWith("https") ? "https" : "http") + ";" +
+                            "action=android.intent.action.VIEW;" +
+                            "type=video/*;" + 
+                            "end";
+            }
             
             var hiddenLink = document.createElement('a');
             hiddenLink.href = intentUrl;
