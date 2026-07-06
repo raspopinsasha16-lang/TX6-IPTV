@@ -15,7 +15,28 @@
             text-align: center;
             min-height: 100vh;
         }
-        h1 { color: #e50914; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin-bottom: 20px; font-size: 28px; }
+        .header-zone {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto 20px auto;
+        }
+        h1 { color: #e50914; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin: 0; font-size: 28px; }
+        
+        /* Кнопка жесткого обновления страницы */
+        .refresh-btn {
+            background: #555;
+            color: #fff;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
         .container { max-width: 600px; margin: 0 auto; }
         
         .player-box { background: rgba(25, 25, 25, 0.95); border: 2px solid #e50914; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
@@ -49,7 +70,10 @@
     <audio id="clickSound" src="click.mp3" preload="auto"></audio>
 
     <div class="container">
-        <h1>🎬 Кинотеатр & IPTV</h1>
+        <div class="header-zone">
+            <h1>🎬 Кинотеатр & IPTV</h1>
+            <button class="refresh-btn focusable" id="refreshAppBtn" tabindex="0" onclick="hardRefresh()">🔄 Обновить</button>
+        </div>
 
         <div class="player-box">
             <div class="player-buttons">
@@ -71,6 +95,17 @@
             }
         }
 
+        // Функция жесткой перезагрузки страницы с обходом кэша браузера
+        function hardRefresh() {
+            playSound();
+            var status = document.getElementById('status');
+            status.innerHTML = '🔄 Сбрасываем кэш и перезагружаем...';
+            setTimeout(function() {
+                // Добавляем случайный маркер времени, чтобы WebView гарантированно скачал свежую версию
+                window.location.href = window.location.pathname + '?t=' + new Date().getTime();
+            }, 300);
+        }
+
         var menuProxy = 'https://proxy.cors.sh/';
 
         function loadIPTVPlaylist(playlistUrl) {
@@ -78,7 +113,7 @@
             var status = document.getElementById('status');
             var grid = document.getElementById('channelsGrid');
             grid.innerHTML = '';
-            status.innerHTML = '⌛ Загрузка списка каналов...';
+            status.innerHTML = '⌛ Загрузка списка...</';
 
             fetch(menuProxy + playlistUrl)
                 .then(response => {
@@ -127,8 +162,35 @@
                     }
                 })
                 .catch(err => {
-                    status.innerHTML = '⚠️ Ошибка прокси. Запускаем напрямую...';
-                    startStream(playlistUrl, "Телевидение");
+                    status.innerHTML = '⚠️ Ошибка прокси. Пробуем загрузить напрямую...';
+                    fetch(playlistUrl)
+                        .then(r => r.text())
+                        .then(directData => {
+                            status.innerHTML = '📺 Список обновлен напрямую. Выберите канал:';
+                            var lines = directData.split('\n');
+                            var currentName = "";
+                            lines.forEach(line => {
+                                line = line.trim();
+                                if (line.startsWith('#EXTINF:')) {
+                                    var parts = line.split(',');
+                                    currentName = parts[parts.length - 1];
+                                } else if (line.length > 0 && !line.startsWith('#')) {
+                                    var streamUrl = line;
+                                    if (!streamUrl.startsWith('http')) streamUrl = 'http://sachamaster.pp.ua/2020/' + streamUrl;
+                                    if (currentName) {
+                                        var btn = document.createElement('button');
+                                        btn.className = 'channel-btn focusable';
+                                        btn.setAttribute('tabindex', '0');
+                                        btn.innerText = currentName;
+                                        (function(u, n) { btn.onclick = function() { startStream(u, n); }; })(streamUrl, currentName);
+                                        grid.appendChild(btn);
+                                    }
+                                }
+                            });
+                        })
+                        .catch(() => {
+                            status.innerHTML = '❌ Не удалось загрузить плейлист.';
+                        });
                 });
         }
 
@@ -165,13 +227,38 @@
 
             if (e.key === 'ArrowDown' || e.keyCode === 40) {
                 e.preventDefault();
-                var nextIndex = index + 2 < focusables.length ? index + 2 : index;
-                if (current.id === 'startTvBtn') nextIndex = 1; 
+                var nextIndex = index;
+                if (current.id === 'refreshAppBtn') {
+                    nextIndex = focusables.findIndex(el => el.id === 'startTvBtn');
+                } else if (current.id === 'startTvBtn') {
+                    // Если каналы загружены, прыгаем на первый канал, иначе на кнопку "Назад"
+                    var channels = document.querySelectorAll('.channel-btn');
+                    if(channels.length > 0) channels[0].focus();
+                    else document.querySelector('.back-btn').focus();
+                    return;
+                } else {
+                    nextIndex = index + 2 < focusables.length ? index + 2 : index;
+                }
                 if(focusables[nextIndex]) focusables[nextIndex].focus();
             }
             else if (e.key === 'ArrowUp' || e.keyCode === 38) {
                 e.preventDefault();
-                var prevIndex = index - 2 >= 0 ? index - 2 : 0;
+                var prevIndex = index;
+                if (current.classList.contains('channel-btn')) {
+                    var grid = document.getElementById('channelsGrid');
+                    var chanIndex = Array.from(grid.children).indexOf(current);
+                    if (chanIndex < 2) {
+                        document.getElementById('startTvBtn').focus();
+                        return;
+                    } else {
+                        prevIndex = index - 2;
+                    }
+                } else if (current.id === 'startTvBtn') {
+                    document.getElementById('refreshAppBtn').focus();
+                    return;
+                } else {
+                    prevIndex = index - 2 >= 0 ? index - 2 : 0;
+                }
                 if(focusables[prevIndex]) focusables[prevIndex].focus();
             }
             else if (e.key === 'ArrowRight' || e.keyCode === 39) {
