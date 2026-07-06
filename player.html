@@ -71,7 +71,7 @@
             }
         }
 
-        var menuProxy = 'https://proxy.cors.sh/';
+        var menuProxy = 'https://corsproxy.io/?';
 
         function loadIPTVPlaylist(playlistUrl) {
             playSound();
@@ -80,7 +80,7 @@
             grid.innerHTML = '';
             status.innerHTML = '⌛ Загрузка списка каналов...';
 
-            fetch(menuProxy + playlistUrl)
+            fetch(menuProxy + encodeURIComponent(playlistUrl))
                 .then(response => {
                     if (!response.ok) throw new Error('Ошибка сети');
                     return response.text();
@@ -127,17 +127,45 @@
                     }
                 })
                 .catch(err => {
-                    status.innerHTML = '⚠️ Ошибка прокси. Запускаем напрямую...';
-                    startStream(playlistUrl, "Телевидение");
+                    status.innerHTML = '⚠️ Ошибка прокси. Пробуем загрузить напрямую...';
+                    // Резервный вариант загрузки без прокси, если corsproxy выдаст сбой
+                    fetch(playlistUrl)
+                        .then(r => r.text())
+                        .then(directData => {
+                            status.innerHTML = '📺 Список обновлен напрямую. Выберите канал:';
+                            // Повторная обработка строк для резервного случая
+                            var lines = directData.split('\n');
+                            var currentName = "";
+                            lines.forEach(line => {
+                                line = line.trim();
+                                if (line.startsWith('#EXTINF:')) {
+                                    var parts = line.split(',');
+                                    currentName = parts[parts.length - 1];
+                                } else if (line.length > 0 && !line.startsWith('#')) {
+                                    var streamUrl = line;
+                                    if (!streamUrl.startsWith('http')) streamUrl = 'http://sachamaster.pp.ua/2020/' + streamUrl;
+                                    if (currentName) {
+                                        var btn = document.createElement('button');
+                                        btn.className = 'channel-btn focusable';
+                                        btn.setAttribute('tabindex', '0');
+                                        btn.innerText = currentName;
+                                        (function(u, n) { btn.onclick = function() { startStream(u, n); }; })(streamUrl, currentName);
+                                        grid.appendChild(btn);
+                                    }
+                                }
+                            });
+                        })
+                        .catch(() => {
+                            status.innerHTML = '❌ Не удалось загрузить плейлист.';
+                        });
                 });
         }
 
-       function startStream(streamUrl, channelName) {
+        function startStream(streamUrl, channelName) {
             playSound();
             var status = document.getElementById('status');
             status.innerHTML = '🚀 Открываем в MX Player: ' + channelName + '...';
             
-            // Формируем Intent-ссылку специально для вызова бесплатного MX Player на Android
             var intentUrl = "intent://" + streamUrl.replace(/^https?:\/\//, "") + 
                             "#Intent;" +
                             "scheme=" + (streamUrl.startsWith("https") ? "https" : "http") + ";" +
@@ -146,17 +174,13 @@
                             "package=com.mxtech.videoplayer.ad;" + 
                             "end";
             
-            // Создаем скрытую ссылку-интент на странице
             var hiddenLink = document.createElement('a');
             hiddenLink.href = intentUrl;
             hiddenLink.style.display = 'none';
             
-            // Добавляем её в документ, принудительно кликаем для обхода защитных механизмов WebView и удаляем
             document.body.appendChild(hiddenLink);
             hiddenLink.click();
             document.body.removeChild(hiddenLink);
-        }
-            
         }
 
         // НАВИГАЦИЯ ДЛЯ ПУЛЬТА УПРАВЛЕНИЯ D-PAD
