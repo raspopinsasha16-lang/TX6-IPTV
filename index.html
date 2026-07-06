@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Халявщик | Главная (ТВ-версия)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(rgba(20, 20, 20, 0.78), rgba(20, 20, 20, 0.78)), url('bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px 10px;
+            text-align: center;
+            min-height: 100vh;
+        }
+        h1 { color: #e50914; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin-bottom: 5px; font-size: 28px; }
+        .sub-title { text-shadow: 0 1px 3px rgba(0,0,0,0.8); color: #ccc; margin-bottom: 20px; font-size: 14px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        
+        .search-box { background: rgba(34, 34, 34, 0.85); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .search-box input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #111; color: #fff; font-size: 16px; text-align: center; outline: none; box-sizing: border-box; }
+        .search-buttons { display: flex; gap: 10px; margin-top: 10px; display: none; }
+        .search-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #fff; font-size: 13px; text-decoration: none; display: block; }
+        .btn-google { background: #4285F4; }
+        .btn-torrent { background: #248a3d; }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; background: rgba(45, 45, 45, 0.7); padding: 12px 15px; margin-top: 15px; border-radius: 8px; font-weight: bold; }
+        .link-card { display: flex; justify-content: space-between; align-items: center; background: rgba(34, 34, 34, 0.85); padding: 12px 15px; margin: 8px 0; border-radius: 8px; box-sizing: border-box; }
+        .link-card a { color: #fff; text-decoration: none; font-size: 16px; font-weight: bold; display: block; width: 100%; text-align: left; }
+        .tag { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .tag.online { background: #e50914; }
+        .tag.torrent { background: #248a3d; }
+
+        .go-player-btn { 
+            display: block; 
+            background: #e50914; 
+            color: white; 
+            text-decoration: none; 
+            padding: 16px; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            font-size: 18px; 
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+            box-sizing: border-box;
+        }
+
+        /* ЭФФЕКТ ВЫДЕЛЕНИЯ ДЛЯ ПУЛЬТА ПРИСТАВКИ */
+        .focusable {
+            outline: none;
+            transition: all 0.1s ease-in-out;
+        }
+        .focusable:focus {
+            transform: scale(1.03);
+            border: 3px solid #e50914 !important;
+            box-shadow: 0 0 15px #e50914 !important;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="clickSound" src="click.mp3" preload="auto"></audio>
+
+    <div class="container">
+        <img src="logo.png" alt="Логотип" style="max-width: 180px; margin: 10px auto; display: block;">
+        <h1>Халявщик</h1>
+        <div class="sub-title">Твой личный медиа-хаб</div>
+
+        <!-- Поисковая строка -->
+        <div class="search-box">
+            <input type="text" id="movieSearch" class="focusable" tabindex="0" placeholder="Введите название фильма..." oninput="checkSearch()">
+            <div class="search-buttons" id="searchBtns">
+                <a href="#" id="goGoogle" onclick="playSound()" target="_blank" class="search-btn btn-google focusable" tabindex="0">В Google</a>
+                <a href="#" id="goRutor" onclick="playSound()" target="_blank" class="search-btn btn-torrent focusable" tabindex="0">На Rutor</a>
+            </div>
+        </div>
+
+        <!-- Онлайн -->
+        <div class="section-header">Смотреть онлайн</div>
+        <div class="link-card focusable" tabindex="0" onclick="document.getElementById('link1').click();">
+            <a href="https://ru.huyamba.name" id="link1" onclick="playSound()" target="_blank">Huyamba</a>
+            <span class="tag online">Онлайн</span>
+        </div>
+        <div class="link-card focusable" tabindex="0" onclick="document.getElementById('link2').click();">
+            <a href="https://hdrezka.my" id="link2" onclick="playSound()" target="_blank">hdrezka</a>
+            <span class="tag online">Онлайн</span>
+        </div>
+
+        <!-- Торренты -->
+        <div class="section-header">Скачать торрентом</div>
+        <div class="link-card focusable" tabindex="0" onclick="document.getElementById('link3').click();">
+            <a href="https://rutracker.org" id="link3" onclick="playSound()" target="_blank">RuTracker</a>
+            <span class="tag torrent">Торрент</span>
+        </div>
+        <div class="link-card focusable" tabindex="0" onclick="document.getElementById('link4').click();">
+            <a href="https://nnmclub.to" id="link4" onclick="playSound()" target="_blank">NNM-Club</a>
+            <span class="tag torrent">Торрент</span>
+        </div>
+        <div class="link-card focusable" tabindex="0" onclick="document.getElementById('link5').click();">
+            <a href="https://rutor.info" id="link5" onclick="playSound()" target="_blank">Rutor</a>
+            <span class="tag torrent">Торрент</span>
+        </div>
+       
+        <!-- Главные разделы -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 25px;">
+            <a href="player.html" class="go-player-btn focusable" tabindex="0" style="background: #007bff;" onclick="playSound()">📺 IPTV-плеер</a>
+            <a href="player2.html" class="go-player-btn focusable" tabindex="0" onclick="playSound()">🎬 Тв на мобильном</a>
+            <a href="alternativa.html" class="go-player-btn focusable" tabindex="0" onclick="playSound()">🚗 Игра ВАЗ-2107</a>
+        </div>
+    </div>
+
+    <script>
+        function playSound() { 
+            var audio = document.getElementById('clickSound');
+            if(audio) {
+                audio.currentTime = 0;
+                audio.play().catch(function(e){}); 
+            }
+        }
+        
+        function checkSearch() {
+            var query = document.getElementById('movieSearch').value.trim();
+            var btns = document.getElementById('searchBtns');
+            if(query.length > 0) {
+                btns.style.display = 'flex';
+                document.getElementById('goGoogle').href = 'https://www.google.com/search?q=' + encodeURIComponent(query + ' смотреть онлайн');
+                document.getElementById('goRutor').href = 'https://rutor.info/search/1/0/000/2/' + encodeURIComponent(query);
+            } else { btns.style.display = 'none'; }
+        }
+
+        // СКРИПТ УПРАВЛЕНИЯ ПУЛЬТОМ (СТРЕЛКИ + ОК)
+        document.addEventListener('keydown', function(e) {
+            var focusables = Array.from(document.querySelectorAll('.focusable'));
+            // Фильтруем только видимые элементы (чтобы не прыгало на скрытые кнопки поиска)
+            focusables = focusables.filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
+            
+            var current = document.activeElement;
+            var index = focusables.indexOf(current);
+
+            if (e.key === 'ArrowDown' || e.keyCode === 40) {
+                e.preventDefault();
+                var nextIndex = index + 1 < focusables.length ? index + 1 : 0;
+                focusables[nextIndex].focus();
+            }
+            else if (e.key === 'ArrowUp' || e.keyCode === 38) {
+                e.preventDefault();
+                var prevIndex = index - 1 >= 0 ? index - 1 : focusables.length - 1;
+                focusables[prevIndex].focus();
+            }
+            else if (e.key === 'Enter' || e.keyCode === 13) {
+                // Если с пульта нажали ОК на карточке или кнопке — кликаем по ней
+                if (index !== -1 && current.tagName !== 'INPUT') {
+                    e.preventDefault();
+                    current.click();
+                }
+            }
+        });
+
+        // При старте автоматически ставим фокус на первый элемент
+        window.addEventListener('DOMContentLoaded', () => {
+            const first = document.querySelector('.focusable');
+            if(first) first.focus();
+        });
+    </script>
+</body>
+</html>
