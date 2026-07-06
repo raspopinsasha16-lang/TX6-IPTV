@@ -55,10 +55,27 @@
             text-align: left;
         }
         .settings-box h3 { margin-top: 0; color: #00bcd4; font-size: 16px; }
-        .input-group { margin-bottom: 10px; }
+        .input-group { margin-bottom: 12px; }
         .input-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px; }
-        .input-group input { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #666; background: #111; color: #fff; box-sizing: border-box; font-size: 14px; }
-        .save-btn { background: #00bcd4; color: #000; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; margin-top: 5px; border: 2px solid transparent; }
+        .input-group input[type="text"] { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #666; background: #111; color: #fff; box-sizing: border-box; font-size: 14px; }
+        
+        /* Кнопка выбора локального файла */
+        .file-select-label {
+            display: inline-block;
+            background: #e50914;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            border: 2px solid transparent;
+        }
+        
+        .save-btn { background: #00bcd4; color: #000; border: none; padding: 10px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; font-size: 14px; margin-top: 10px; border: 2px solid transparent; }
 
         #status { font-size: 14px; color: #00bcd4; margin: 12px 0; font-weight: bold; }
 
@@ -78,7 +95,7 @@
             background: #e50914 !important;
             color: #fff !important;
         }
-        .input-group input:focus {
+        .input-group input[type="text"]:focus {
             border: 2px solid #00bcd4 !important;
             background: #222;
         }
@@ -100,17 +117,23 @@
                 <button class="settings-toggle-btn focusable" id="toggleSettingsBtn" tabindex="0" onclick="toggleSettings()">⚙️ Настройки</button>
             </div>
 
-            <!-- Скрытый блок настроек -->
             <div class="settings-box" id="settingsBox">
-                <h3>Добавить свой контент:</h3>
+                <h3>Добавить онлайн ссылки:</h3>
                 <div class="input-group">
-                    <label for="customPlaylistUrl">Ссылка на IPTV плейлист (.m3u / .m3u8):</label>
+                    <label for="customPlaylistUrl">Ссылка на IPTV плейлист (.m3u8):</label>
                     <input type="text" id="customPlaylistUrl" class="focusable" tabindex="0" placeholder="http://example.com/playlist.m3u8">
                 </div>
                 <div class="input-group">
-                    <label for="customVideoUrl">Ссылка на прямой MP4 файл / Фильм:</label>
+                    <label for="customVideoUrl">Ссылка на сетевой MP4 фильм:</label>
                     <input type="text" id="customVideoUrl" class="focusable" tabindex="0" placeholder="http://example.com/movie.mp4">
                 </div>
+                
+                <h3 style="margin-top:15px; color:#e50914;">Открыть из памяти приставки/телефона:</h3>
+                <div class="input-group">
+                    <input type="file" id="localVideoFile" accept="video/*" style="display:none;" onchange="handleLocalFile(this)">
+                    <label for="localVideoFile" class="file-select-label focusable" id="fileSelectLabel" tabindex="0" onclick="document.getElementById('localVideoFile').click()">📂 Выбрать видеофайл</label>
+                </div>
+
                 <button class="save-btn focusable" id="saveSettingsBtn" tabindex="0" onclick="saveCustomSettings()">💾 Сохранить и применить</button>
             </div>
 
@@ -139,13 +162,11 @@
             }, 300);
         }
 
-        // Получение текущего активного плейлиста (своего или дефолтного)
         function getDefaultPlaylist() {
             var saved = localStorage.getItem('custom_playlist_url');
             return saved ? saved : 'http://sachamaster.pp.ua/2020/2020399.m3u8';
         }
 
-        // Показать / скрыть панель настроек
         function toggleSettings() {
             playSound();
             var box = document.getElementById('settingsBox');
@@ -154,37 +175,40 @@
                 document.getElementById('startTvBtn').focus();
             } else {
                 box.style.display = 'block';
-                // Подтягиваем ранее сохраненные значения в поля ввода
                 document.getElementById('customPlaylistUrl').value = localStorage.getItem('custom_playlist_url') || '';
                 document.getElementById('customVideoUrl').value = localStorage.getItem('custom_video_url') || '';
                 document.getElementById('customPlaylistUrl').focus();
             }
         }
 
-        // Сохранение настроек в память приставки
+        // Обработка выбранного из памяти файла
+        function handleLocalFile(input) {
+            if (input.files && input.files[0]) {
+                var file = input.files[0];
+                // Создаем временную внутреннюю ссылку на этот файл в памяти устройства
+                var objectUrl = URL.createObjectURL(file);
+                
+                // Сохраняем имя и временный путь в localStorage, чтобы вывести кнопку на экран
+                localStorage.setItem('local_video_name', file.name);
+                localStorage.setItem('local_video_blob', objectUrl);
+                
+                var status = document.getElementById('status');
+                status.innerHTML = '✅ Выбран локальный файл: ' + file.name;
+            }
+        }
+
         function saveCustomSettings() {
             playSound();
             var playlistUrl = document.getElementById('customPlaylistUrl').value.trim();
             var videoUrl = document.getElementById('customVideoUrl').value.trim();
 
-            if (playlistUrl) {
-                localStorage.setItem('custom_playlist_url', playlistUrl);
-            } else {
-                localStorage.removeItem('custom_playlist_url');
-            }
+            if (playlistUrl) localStorage.setItem('custom_playlist_url', playlistUrl);
+            else localStorage.removeItem('custom_playlist_url');
 
-            if (videoUrl) {
-                localStorage.setItem('custom_video_url', videoUrl);
-            } else {
-                localStorage.removeItem('custom_video_url');
-            }
+            if (videoUrl) localStorage.setItem('custom_video_url', videoUrl);
+            else localStorage.removeItem('custom_video_url');
 
-            var status = document.getElementById('status');
-            status.innerHTML = '💾 Настройки сохранены!';
-            
             document.getElementById('settingsBox').style.display = 'none';
-            
-            // Если была сохранена прямая ссылка на MP4, сразу добавляем её кнопку в список
             buildChannelsGrid();
         }
 
@@ -200,21 +224,15 @@
             fetch(menuProxy + playlistUrl)
                 .then(response => {
                     if (!response.ok) throw new Error('Ошибка сети');
-                    return response.text();
-                })
-                .then(data => {
-                    parseAndBuildList(data, playlistUrl);
-                })
-                .catch(err => {
-                    status.innerHTML = '⚠️ Загрузка напрямую...';
+                    return response.text())
+                .then(data => { parseAndBuildList(data, playlistUrl); })
+                .catch(() => {
                     fetch(playlistUrl)
                         .then(r => r.text())
-                        .then(directData => {
-                            parseAndBuildList(directData, playlistUrl);
-                        })
+                        .then(directData => { parseAndBuildList(directData, playlistUrl); })
                         .catch(() => {
-                            status.innerHTML = '❌ Не удалось загрузить плейлист.';
-                            buildChannelsGrid(); // В случае ошибки всё равно выведем MP4, если он есть
+                            status.innerHTML = '❌ Ошибка загрузки плейлиста.';
+                            buildChannelsGrid();
                         });
                 });
         }
@@ -224,22 +242,12 @@
             var grid = document.getElementById('channelsGrid');
             status.innerHTML = '📺 Список обновлен. Выберите канал:';
             
+            // Выводим кастомные элементы наверх
+            appendCustomButtons(grid);
+
             var lines = data.split('\n');
             var currentName = "";
             var count = 0;
-
-            // Сначала вставляем кнопку для кастомного MP4 файла на самый верх списка, если он сохранен
-            var savedVideo = localStorage.getItem('custom_video_url');
-            if (savedVideo) {
-                var vipBtn = document.createElement('button');
-                vipBtn.className = 'channel-btn focusable';
-                vipBtn.setAttribute('tabindex', '0');
-                vipBtn.style.background = '#00bcd4';
-                vipBtn.style.color = '#000';
-                vipBtn.innerText = '🎥 Моё видео (MP4)';
-                vipBtn.onclick = function() { startStream(savedVideo, "Пользовательское видео"); };
-                grid.appendChild(vipBtn);
-            }
 
             lines.forEach(line => {
                 line = line.trim();
@@ -252,7 +260,6 @@
                     if (!streamUrl.startsWith('http') && playlistUrl.includes('sachamaster.pp.ua')) {
                         streamUrl = 'http://sachamaster.pp.ua/2020/' + streamUrl;
                     }
-                    
                     if (currentName) {
                         var btn = document.createElement('button');
                         btn.className = 'channel-btn focusable';
@@ -272,10 +279,8 @@
             }, 100);
         }
 
-        // Функция для вывода только MP4, если плейлист не загружался
-        function buildChannelsGrid() {
-            var grid = document.getElementById('channelsGrid');
-            grid.innerHTML = '';
+        function appendCustomButtons(grid) {
+            // 1. Сетевой MP4
             var savedVideo = localStorage.getItem('custom_video_url');
             if (savedVideo) {
                 var vipBtn = document.createElement('button');
@@ -283,10 +288,30 @@
                 vipBtn.setAttribute('tabindex', '0');
                 vipBtn.style.background = '#00bcd4';
                 vipBtn.style.color = '#000';
-                vipBtn.innerText = '🎥 Моё видео (MP4)';
-                vipBtn.onclick = function() { startStream(savedVideo, "Пользовательское видео"); };
+                vipBtn.innerText = '🎥 Сетевое видео (MP4)';
+                vipBtn.onclick = function() { startStream(savedVideo, "Сетевое видео"); };
                 grid.appendChild(vipBtn);
             }
+
+            // 2. Локальный файл из памяти приставки
+            var localName = localStorage.getItem('local_video_name');
+            var localBlob = localStorage.getItem('local_video_blob');
+            if (localBlob) {
+                var localBtn = document.createElement('button');
+                localBtn.className = 'channel-btn focusable';
+                localBtn.setAttribute('tabindex', '0');
+                localBtn.style.background = '#e50914';
+                localBtn.style.color = '#fff';
+                localBtn.innerText = '📁 Из памяти: ' + (localName.length > 20 ? localName.substring(0,18)+'...' : localName);
+                localBtn.onclick = function() { startStream(localBlob, localName); };
+                grid.appendChild(localBtn);
+            }
+        }
+
+        function buildChannelsGrid() {
+            var grid = document.getElementById('channelsGrid');
+            grid.innerHTML = '';
+            appendCustomButtons(grid);
             document.getElementById('startTvBtn').focus();
         }
 
@@ -295,9 +320,9 @@
             var status = document.getElementById('status');
             status.innerHTML = '🎬 Выбираем плеер для: ' + channelName + '...';
             
-            var intentUrl = "intent://" + streamUrl.replace(/^https?:\/\//, "") + 
+            var intentUrl = "intent://" + streamUrl.replace(/^https?:\/\//, "").replace(/^blob:https?:\/\//, "") + 
                             "#Intent;" +
-                            "scheme=" + (streamUrl.startsWith("https") ? "https" : "http") + ";" +
+                            "scheme=" + (streamUrl.startsWith("blob") ? "content" : (streamUrl.startsWith("https") ? "https" : "http")) + ";" +
                             "action=android.intent.action.VIEW;" +
                             "type=video/*;" + 
                             "end";
@@ -305,15 +330,14 @@
             var hiddenLink = document.createElement('a');
             hiddenLink.href = intentUrl;
             hiddenLink.style.display = 'none';
-            
             document.body.appendChild(hiddenLink);
             hiddenLink.click();
             document.body.removeChild(hiddenLink);
         }
 
-        // НАВИГАЦИЯ ДЛЯ ПУЛЬТА УПРАВЛЕНИЯ
+        // НАВИГАЦИЯ ДЛЯ ПУЛЬТА
         document.addEventListener('keydown', function(e) {
-            var focusables = Array.from(document.querySelectorAll('.focusable, .settings-box input'));
+            var focusables = Array.from(document.querySelectorAll('.focusable'));
             focusables = focusables.filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
             
             var current = document.activeElement;
@@ -368,7 +392,7 @@
                 if(focusables[prevIndex]) focusables[prevIndex].focus();
             }
             else if (e.key === 'ArrowRight' || e.keyCode === 39) {
-                if (current.tagName === 'INPUT') return; // Внутри инпута стрелки двигают текст
+                if (current.tagName === 'INPUT') return;
                 e.preventDefault();
                 var rightIndex = index + 1 < focusables.length ? index + 1 : index;
                 if(focusables[rightIndex]) focusables[rightIndex].focus();
@@ -380,7 +404,6 @@
                 if(focusables[leftIndex]) focusables[leftIndex].focus();
             }
             else if (e.key === 'Enter' || e.keyCode === 13) {
-                if (current.tagName === 'INPUT') return; // В инпутах Enter не кликает
                 e.preventDefault();
                 current.click();
             }
@@ -389,9 +412,8 @@
         window.addEventListener('DOMContentLoaded', () => {
             const startBtn = document.getElementById('startTvBtn');
             if(startBtn) startBtn.focus();
-            buildChannelsGrid(); // Показываем кастомный MP4 сразу, если он есть
+            buildChannelsGrid();
         });
     </script>
 </body>
 </html>
-
