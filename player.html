@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Халявщик | Кинотеатр & IPTV (ТВ-версия)</title>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(rgba(20, 20, 20, 0.85), rgba(20, 20, 20, 0.85)), url('bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px 10px;
+            text-align: center;
+            min-height: 100vh;
+        }
+        h1 { color: #e50914; text-shadow: 0 2px 4px rgba(0,0,0,0.8); margin-bottom: 20px; font-size: 28px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        .player-box { background: rgba(25, 25, 25, 0.95); border: 2px solid #e50914; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        
+        .player-buttons { display: flex; gap: 10px; margin-bottom: 5px; }
+        .tv-quick-btn { background: #248a3d; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 15px; white-space: nowrap; box-sizing: border-box; border: 2px solid transparent; }
+        
+        #video-container { margin-top: 15px; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 5px 15px rgba(0,0,0,0.8); }
+        #status { font-size: 14px; color: #00bcd4; margin: 12px 0; font-weight: bold; }
+
+        .tv-channels-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 15px; max-height: 250px; overflow-y: auto; padding-right: 5px; }
+        .channel-btn { background: #1f1f1f; color: #fff; border: 1px solid #444; padding: 12px; border-radius: 6px; font-size: 13px; cursor: pointer; font-weight: bold; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; box-sizing: border-box; }
+        .channel-btn:hover { background: #e50914; border-color: #e50914; }
+
+        /* Кнопка назад */
+        .back-btn { display: inline-block; color: #aaa; text-decoration: none; font-size: 14px; margin-top: 20px; font-weight: bold; border: 2px solid transparent; padding: 5px 10px; border-radius: 6px; }
+        .back-btn:hover { color: #fff; }
+
+        /* Плеер Plyr */
+        .plyr__controls [data-plyr="play"] { background: #e50914 !important; color: #fff !important; }
+
+        /* ПОДДСВЕТКА ВЫБРАННОГО С ПУЛЬТА ЭЛЕМЕНТА */
+        .focusable { outline: none; transition: all 0.1s ease-in-out; }
+        .focusable:focus {
+            transform: scale(1.02);
+            border: 2px solid #e50914 !important;
+            box-shadow: 0 0 10px #e50914 !important;
+            background: #e50914 !important;
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="clickSound" src="click.mp3" preload="auto"></audio>
+
+    <div class="container">
+        <h1>🎬 Кинотеатр & IPTV</h1>
+
+        <div class="player-box">
+            <div class="player-buttons">
+                <button class="tv-quick-btn focusable" id="startTvBtn" tabindex="0" onclick="loadIPTVPlaylist('http://sachamaster.pp.ua/2020/2020399.m3u8')">📺 Моё ТВ</button>
+            </div>
+            <div id="status">Запустите телевидение</div>
+            <div id="video-container"></div>
+            <div class="tv-channels-grid" id="channelsGrid"></div>
+        </div>
+
+        <a href="index.html" class="back-btn focusable" tabindex="0" onclick="playSound()">← На главную страницу</a>
+    </div>
+
+    <script>
+        function playSound() { 
+            var audio = document.getElementById('clickSound');
+            if(audio) {
+                audio.currentTime = 0;
+                audio.play().catch(function(e){}); 
+            }
+        }
+
+        var player;
+        var hlsInstance = null;
+        var plyrConfig = { controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'pip', 'fullscreen'] };
+        var menuProxy = 'https://proxy.cors.sh/';
+
+        function loadIPTVPlaylist(playlistUrl) {
+            playSound();
+            var status = document.getElementById('status');
+            var grid = document.getElementById('channelsGrid');
+            grid.innerHTML = '';
+            status.innerHTML = '⌛ Загрузка списка каналов...';
+
+            fetch(menuProxy + playlistUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error('Ошибка сети');
+                    return response.text();
+                })
+                .then(data => {
+                    status.innerHTML = '📺 Список обновлен. Выберите канал:';
+                    var lines = data.split('\n');
+                    var currentName = "";
+                    var count = 0;
+
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if (line.startsWith('#EXTINF:')) {
+                            var parts = line.split(',');
+                            currentName = parts[parts.length - 1] || "Канал " + (++count);
+                        } 
+                        else if (line.length > 0 && !line.startsWith('#')) {
+                            var streamUrl = line;
+                            if (!streamUrl.startsWith('http')) {
+                                streamUrl = 'http://sachamaster.pp.ua/2020/' + streamUrl;
+                            }
+                            
+                            if (currentName) {
+                                var btn = document.createElement('button');
+                                btn.className = 'channel-btn focusable';
+                                btn.setAttribute('tabindex', '0');
+                                btn.innerText = currentName;
+                                (function(url, name) {
+                                    btn.onclick = function() { startStream(url, name); };
+                                })(streamUrl, currentName);
+                                grid.appendChild(btn);
+                            }
+                        }
+                    });
+
+                    if (grid.children.length === 0) {
+                        status.innerHTML = '📺 Запуск прямого эфира...';
+                        startStream(playlistUrl, "Прямой поток");
+                    } else {
+                        // Автоматически переводим фокус на первый загруженный канал, чтобы пульт сразу работал
+                        setTimeout(() => {
+                            const firstChan = grid.querySelector('.focusable');
+                            if(firstChan) firstChan.focus();
+                        }, 100);
+                    }
+                })
+                .catch(err => {
+                    status.innerHTML = '⚠️ Ошибка прокси. Запускаем напрямую...';
+                    startStream(playlistUrl, "Телевидение");
+                });
+        }
+
+        function startStream(streamUrl, channelName) {
+            playSound();
+            var container = document.getElementById('video-container');
+            var status = document.getElementById('status');
+            
+            // ВАЖНО: Мы убрали редирект для Android (isMobile), чтобы приложение открывало видео внутри себя!
+            status.innerHTML = '🚀 Запуск: ' + channelName + '...';
+            container.innerHTML = '<video id="player" playsinline controls></video>';
+            var videoElement = document.getElementById('player');
+
+            if (hlsInstance) { hlsInstance.destroy(); }
+
+            var fastVideoUrl = 'https://corsproxy.io/?' + encodeURIComponent(streamUrl);
+
+            if (Hls.isSupported()) {
+                hlsInstance = new Hls();
+                hlsInstance.loadSource(fastVideoUrl);
+                hlsInstance.attachMedia(videoElement);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+                    player = new Plyr(videoElement, plyrConfig);
+                    videoElement.play().catch(function(){});
+                    status.innerHTML = '📺 Эфир: ' + channelName;
+                });
+                hlsInstance.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        hlsInstance.loadSource(streamUrl);
+                    }
+                });
+            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                videoElement.src = fastVideoUrl;
+                player = new Plyr(videoElement, plyrConfig);
+                videoElement.play().catch(function(){});
+                status.innerHTML = '📺 Эфир: ' + channelName;
+            }
+        }
+
+        // НАВИГАЦИЯ ДЛЯ ПУЛЬТА УПРАВЛЕНИЯ D-PAD
+        document.addEventListener('keydown', function(e) {
+            var focusables = Array.from(document.querySelectorAll('.focusable'));
+            focusables = focusables.filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
+            
+            var current = document.activeElement;
+            var index = focusables.indexOf(current);
+            if (index === -1) return;
+
+            // Сетка каналов у нас в 2 колонки, рассчитываем переходы влево-вправо
+            if (e.key === 'ArrowDown' || e.keyCode === 40) {
+                e.preventDefault();
+                // Если мы на верхних кнопках, прыгаем в сетку каналов. В сетке прыгаем на 2 элемента вперед (строка вниз)
+                var nextIndex = index + 2 < focusables.length ? index + 2 : index;
+                if (current.id === 'startTvBtn') nextIndex = 1; // переход с "Мое ТВ" на 1-й канал
+                if(focusables[nextIndex]) focusables[nextIndex].focus();
+            }
+            else if (e.key === 'ArrowUp' || e.keyCode === 38) {
+                e.preventDefault();
+                var prevIndex = index - 2 >= 0 ? index - 2 : 0;
+                if(focusables[prevIndex]) focusables[prevIndex].focus();
+            }
+            else if (e.key === 'ArrowRight' || e.keyCode === 39) {
+                e.preventDefault();
+                var rightIndex = index + 1 < focusables.length ? index + 1 : index;
+                if(focusables[rightIndex]) focusables[rightIndex].focus();
+            }
+            else if (e.key === 'ArrowLeft' || e.keyCode === 37) {
+                e.preventDefault();
+                var leftIndex = index - 1 >= 0 ? index - 1 : 0;
+                if(focusables[leftIndex]) focusables[leftIndex].focus();
+            }
+            else if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                current.click();
+            }
+        });
+
+        // Автофокус при старте страницы на кнопку "Моё ТВ"
+        window.addEventListener('DOMContentLoaded', () => {
+            const startBtn = document.getElementById('startTvBtn');
+            if(startBtn) startBtn.focus();
+        });
+    </script>
+</body>
+</html>
