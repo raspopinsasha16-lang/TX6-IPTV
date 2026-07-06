@@ -197,14 +197,14 @@
         function startStream(streamUrl, channelName) {
             playSound();
             var status = document.getElementById('status');
-            status.innerHTML = '🚀 Открываем в MX Player: ' + channelName + '...';
+            status.innerHTML = '🎬 Выбираем плеер для: ' + channelName + '...';
             
+            // Формируем чистый Intent без жесткой привязки к пакету com.mxtech
             var intentUrl = "intent://" + streamUrl.replace(/^https?:\/\//, "") + 
                             "#Intent;" +
                             "scheme=" + (streamUrl.startsWith("https") ? "https" : "http") + ";" +
                             "action=android.intent.action.VIEW;" +
-                            "type=video/*;" +
-                            "package=com.mxtech.videoplayer.ad;" + 
+                            "type=video/*;" + 
                             "end";
             
             var hiddenLink = document.createElement('a');
