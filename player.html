@@ -53,9 +53,9 @@
 
         <div class="player-box">
             <div class="player-buttons">
-                <button class="tv-quick-btn focusable" id="startTvBtn" tabindex="0" onclick="loadIPTVPlaylist('http://sachamaster.pp.ua/2020/2020399.m3u8')">📺 Загрузить список каналов</button>
+                <button class="tv-quick-btn focusable" id="startTvBtn" tabindex="0" onclick="loadIPTVPlaylist('http://sachamaster.pp.ua/2020/2020399.m3u8')">📺 Моё ТВ</button>
             </div>
-            <div id="status">Нажмите кнопку выше для загрузки каналов</div>
+            <div id="status">Запустите телевидение</div>
             <div class="tv-channels-grid" id="channelsGrid"></div>
         </div>
 
@@ -71,7 +71,7 @@
             }
         }
 
-        var menuProxy = 'https://corsproxy.io/?';
+        var menuProxy = 'https://proxy.cors.sh/';
 
         function loadIPTVPlaylist(playlistUrl) {
             playSound();
@@ -80,13 +80,13 @@
             grid.innerHTML = '';
             status.innerHTML = '⌛ Загрузка списка каналов...';
 
-            fetch(menuProxy + encodeURIComponent(playlistUrl))
+            fetch(menuProxy + playlistUrl)
                 .then(response => {
                     if (!response.ok) throw new Error('Ошибка сети');
                     return response.text();
                 })
                 .then(data => {
-                    status.innerHTML = '📺 Список обновлен. Выберите канал (откроется в MX Player):';
+                    status.innerHTML = '📺 Список обновлен. Выберите канал:';
                     var lines = data.split('\n');
                     var currentName = "";
                     var count = 0;
@@ -127,37 +127,8 @@
                     }
                 })
                 .catch(err => {
-                    status.innerHTML = '⚠️ Ошибка прокси. Пробуем загрузить напрямую...';
-                    // Резервный вариант загрузки без прокси, если corsproxy выдаст сбой
-                    fetch(playlistUrl)
-                        .then(r => r.text())
-                        .then(directData => {
-                            status.innerHTML = '📺 Список обновлен напрямую. Выберите канал:';
-                            // Повторная обработка строк для резервного случая
-                            var lines = directData.split('\n');
-                            var currentName = "";
-                            lines.forEach(line => {
-                                line = line.trim();
-                                if (line.startsWith('#EXTINF:')) {
-                                    var parts = line.split(',');
-                                    currentName = parts[parts.length - 1];
-                                } else if (line.length > 0 && !line.startsWith('#')) {
-                                    var streamUrl = line;
-                                    if (!streamUrl.startsWith('http')) streamUrl = 'http://sachamaster.pp.ua/2020/' + streamUrl;
-                                    if (currentName) {
-                                        var btn = document.createElement('button');
-                                        btn.className = 'channel-btn focusable';
-                                        btn.setAttribute('tabindex', '0');
-                                        btn.innerText = currentName;
-                                        (function(u, n) { btn.onclick = function() { startStream(u, n); }; })(streamUrl, currentName);
-                                        grid.appendChild(btn);
-                                    }
-                                }
-                            });
-                        })
-                        .catch(() => {
-                            status.innerHTML = '❌ Не удалось загрузить плейлист.';
-                        });
+                    status.innerHTML = '⚠️ Ошибка прокси. Запускаем напрямую...';
+                    startStream(playlistUrl, "Телевидение");
                 });
         }
 
